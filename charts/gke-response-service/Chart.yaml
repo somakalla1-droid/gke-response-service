@@ -1,0 +1,6 @@
+apiVersion: v2
+name: gke-response-service
+description: Response service for the GKE SRE assessment
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
