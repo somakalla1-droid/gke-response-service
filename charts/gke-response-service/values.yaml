@@ -10,4 +10,8 @@ resources:
   limits: {cpu: 250m, memory: 128Mi}
 autoscaling: {minReplicas: 2, maxReplicas: 5, targetCPUUtilizationPercentage: 70}
 podDisruptionBudget: {minAvailable: 1}
-environment: {clusterName: unknown, region: unknown, responseMessage: response-service-ready}
+config: {clusterName: unknown, region: unknown, responseMessage: response-service-ready}
+secret:
+  create: false
+  existingSecret: ""
+  stringData: {}
