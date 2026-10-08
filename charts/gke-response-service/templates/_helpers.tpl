@@ -9,3 +9,4 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "app.serviceAccount" -}}{{ default (include "app.fullname" .) .Values.serviceAccount.name }}{{- end }}
 {{- define "app.configMap" -}}{{ printf "%s-config" (include "app.fullname" .) }}{{- end }}
 {{- define "app.secret" -}}{{ default (printf "%s-secrets" (include "app.fullname" .)) .Values.secret.existingSecret }}{{- end }}
+{{- define "app.secretProviderClass" -}}{{ default (printf "%s-gsm" (include "app.fullname" .)) .Values.secretManager.secretProviderClassName }}{{- end }}

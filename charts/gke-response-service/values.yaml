@@ -15,3 +15,12 @@ secret:
   create: false
   existingSecret: ""
   stringData: {}
+secretManager:
+  # Keep false for local development. Enable only on a GKE cluster with the
+  # Secret Manager add-on and the matching Workload Identity access binding.
+  enabled: false
+  projectNumber: ""
+  secretName: "gke-sre-response-demo-token"
+  fileName: "response-demo-token"
+  mountPath: "/var/run/secrets/gsm"
+  secretProviderClassName: ""
