@@ -35,3 +35,22 @@ helm upgrade --install response charts/gke-response-service \
 ```
 
 For sensitive settings, use an externally managed Kubernetes Secret by setting `secret.existingSecret`, or enable chart-managed creation with `secret.create=true` and a non-empty `secret.stringData` map. Never commit real secret values in a values file. The assessment's production design will use Secret Manager with Workload Identity Federation.
+
+### Google Secret Manager on GKE
+
+For the assessment deployment, the secret is delivered as a read-only file by the GKE Secret Manager CSI add-on. The Helm chart creates a `SecretProviderClass` and mounts the file, but does **not** mirror the value into a Kubernetes Secret. The target GKE cluster must have the Secret Manager add-on enabled, and the release ServiceAccount must have the corresponding Workload Identity principal access granted in Google Secret Manager.
+
+Example for the prepared assessment resources:
+
+```bash
+helm upgrade --install response charts/gke-response-service \
+  --namespace assessment-apps \
+  --create-namespace \
+  --set serviceAccount.name=response-service-workload \
+  --set config.clusterName=gke-primary \
+  --set config.region=us-central1 \
+  --set secretManager.enabled=true \
+  --set secretManager.projectNumber=150538255871
+```
+
+The application must treat `/var/run/secrets/gsm/response-demo-token` as sensitive: do not log, print, commit, or inject its contents into a Kubernetes Secret. To verify the mount later, test only for the presence of the file, not its value.

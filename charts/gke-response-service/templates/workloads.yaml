@@ -5,6 +5,26 @@ metadata:
   labels: {{- include "app.labels" . | nindent 4 }}
 automountServiceAccountToken: false
 ---
+{{- if .Values.secretManager.enabled }}
+{{- if not .Values.secretManager.projectNumber }}
+{{- fail "secretManager.projectNumber is required when secretManager.enabled is true" }}
+{{- end }}
+{{- if not .Values.secretManager.secretName }}
+{{- fail "secretManager.secretName is required when secretManager.enabled is true" }}
+{{- end }}
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: {{ include "app.secretProviderClass" . }}
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  provider: gke
+  parameters:
+    secrets: |
+      - resourceName: "projects/{{ .Values.secretManager.projectNumber }}/secrets/{{ .Values.secretManager.secretName }}/versions/latest"
+        fileName: "{{ .Values.secretManager.fileName }}"
+---
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -56,6 +76,10 @@ spec:
       labels: {{- include "app.labels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "app.serviceAccount" . }}
+      {{- if .Values.secretManager.enabled }}
+      nodeSelector:
+        iam.gke.io/gke-metadata-server-enabled: "true"
+      {{- end }}
       securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: application
@@ -76,6 +100,21 @@ spec:
           livenessProbe: {httpGet: {path: /healthz, port: http}}
           readinessProbe: {httpGet: {path: /readyz, port: http}}
           resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.secretManager.enabled }}
+          volumeMounts:
+            - name: gsm-secrets
+              mountPath: {{ .Values.secretManager.mountPath | quote }}
+              readOnly: true
+          {{- end }}
+      {{- if .Values.secretManager.enabled }}
+      volumes:
+        - name: gsm-secrets
+          csi:
+            driver: secrets-store-gke.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "app.secretProviderClass" . }}
+      {{- end }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
