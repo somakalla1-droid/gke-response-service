@@ -22,7 +22,7 @@ docker run --rm -p 8080:8080 gke-response-service:local
 helm lint charts/gke-response-service
 ```
 
-The image is distroless and non-root. The application-owned Helm chart configures two replicas, health probes, constrained resources, HPA, and a PodDisruptionBudget.
+The image is distroless and non-root. The application-owned Helm chart configures two replicas, health probes, constrained resources, HPA, and a PodDisruptionBudget. Its container security context explicitly uses the distroless `nonroot` UID/GID (`65532`), allowing Kubernetes to verify the `runAsNonRoot` policy without relying on the image's named user.
 
 ### Kubernetes configuration
 
