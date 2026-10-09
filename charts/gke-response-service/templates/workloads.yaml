@@ -21,7 +21,7 @@ spec:
   provider: gke
   parameters:
     secrets: |
-      - resourceName: "projects/{{ .Values.secretManager.projectNumber }}/secrets/{{ .Values.secretManager.secretName }}/versions/latest"
+      - resourceName: "projects/{{ .Values.secretManager.projectNumber | int64 }}/secrets/{{ .Values.secretManager.secretName }}/versions/latest"
         fileName: "{{ .Values.secretManager.fileName }}"
 ---
 {{- end }}
