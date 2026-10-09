@@ -31,8 +31,13 @@ func TestControlledError(t *testing.T) {
 
 func TestControlledErrorLogsStatusAndSeverity(t *testing.T) {
 	var logs bytes.Buffer
+	var errorLogs bytes.Buffer
 	requestLogger.SetOutput(&logs)
-	t.Cleanup(func() { requestLogger.SetOutput(os.Stdout) })
+	errorLogger.SetOutput(&errorLogs)
+	t.Cleanup(func() {
+		requestLogger.SetOutput(os.Stdout)
+		errorLogger.SetOutput(os.Stderr)
+	})
 
 	h := New(Config{})
 	res := httptest.NewRecorder()
@@ -47,6 +52,21 @@ func TestControlledErrorLogsStatusAndSeverity(t *testing.T) {
 	}
 	if entry["status_code"] != float64(http.StatusInternalServerError) {
 		t.Fatalf("status_code = %v", entry["status_code"])
+	}
+
+	var errorEntry map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(errorLogs.Bytes()), &errorEntry); err != nil {
+		t.Fatalf("error report is not JSON: %v", err)
+	}
+	if errorEntry["severity"] != "ERROR" {
+		t.Fatalf("error severity = %v", errorEntry["severity"])
+	}
+	if !strings.Contains(errorEntry["message"].(string), "goroutine") {
+		t.Fatalf("error report does not contain a Go stack trace")
+	}
+	serviceContext := errorEntry["serviceContext"].(map[string]any)
+	if _, ok := serviceContext["service"]; !ok {
+		t.Fatalf("error report has no service context")
 	}
 }
 func TestDelayRejectsRange(t *testing.T) {

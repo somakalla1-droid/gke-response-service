@@ -11,6 +11,9 @@ resources:
 autoscaling: {minReplicas: 2, maxReplicas: 5, targetCPUUtilizationPercentage: 70}
 podDisruptionBudget: {minAvailable: 1}
 config: {clusterName: unknown, region: unknown, responseMessage: response-service-ready}
+observability:
+  enabled: false
+  projectId: gke-sre-assesment
 secret:
   create: false
   existingSecret: ""

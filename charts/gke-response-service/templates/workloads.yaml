@@ -31,10 +31,12 @@ metadata:
   name: {{ include "app.configMap" . }}
   labels: {{- include "app.labels" . | nindent 4 }}
 data:
-  APP_VERSION: {{ .Chart.AppVersion | quote }}
+  APP_VERSION: {{ .Values.image.tag | quote }}
   CLUSTER_NAME: {{ .Values.config.clusterName | quote }}
   REGION: {{ .Values.config.region | quote }}
   RESPONSE_MESSAGE: {{ .Values.config.responseMessage | quote }}
+  OBSERVABILITY_ENABLED: {{ .Values.observability.enabled | quote }}
+  GOOGLE_CLOUD_PROJECT: {{ .Values.observability.projectId | quote }}
 ---
 {{- if .Values.secret.create }}
 {{- if not .Values.secret.stringData }}
