@@ -6,18 +6,23 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/trace"
 )
 
-type Config struct{ AppName, Version, ClusterName, Region, PodName, Message string }
+type Config struct{ AppName, Version, ProjectID, ClusterName, Region, PodName, Message string }
 type service struct {
 	config           Config
 	requests, errors atomic.Uint64
 }
 
 var requestLogger = log.New(os.Stdout, "", 0)
+var errorLogger = log.New(os.Stderr, "", 0)
 
 type statusWriter struct {
 	http.ResponseWriter
@@ -47,7 +52,13 @@ func New(config Config) http.Handler {
 	mux.HandleFunc("/metrics", s.metrics)
 	mux.HandleFunc("/error", s.controlledError)
 	mux.HandleFunc("/delay", s.delay)
-	return s.logging(mux)
+	return otelhttp.NewHandler(
+		s.logging(mux),
+		config.AppName,
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			return r.URL.Path != "/healthz" && r.URL.Path != "/readyz" && r.URL.Path != "/metrics"
+		}),
+	)
 }
 func (s *service) response(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -62,7 +73,18 @@ func (s *service) metrics(w http.ResponseWriter, _ *http.Request) {
 }
 func (s *service) controlledError(w http.ResponseWriter, r *http.Request) {
 	s.errors.Add(1)
-	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "controlled downstream failure", "request_id": requestID(r)})
+	id := requestID(r)
+	entry, _ := json.Marshal(map[string]any{
+		"severity":   "ERROR",
+		"message":    fmt.Sprintf("controlled downstream failure\n%s", debug.Stack()),
+		"request_id": id,
+		"serviceContext": map[string]string{
+			"service": s.config.AppName,
+			"version": s.config.Version,
+		},
+	})
+	errorLogger.Print(string(entry))
+	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "controlled downstream failure", "request_id": id})
 }
 func (s *service) delay(w http.ResponseWriter, r *http.Request) {
 	ms, err := strconv.Atoi(r.URL.Query().Get("ms"))
@@ -93,8 +115,15 @@ func (s *service) logging(next http.Handler) http.Handler {
 			severity = "WARNING"
 		}
 
-		entry, _ := json.Marshal(map[string]any{"severity": severity, "message": "request completed", "method": r.Method, "path": r.URL.Path, "request_id": id, "status_code": statusCode, "latency_ms": time.Since(started).Milliseconds()})
-		requestLogger.Print(string(entry))
+		entry := map[string]any{"severity": severity, "message": "request completed", "method": r.Method, "path": r.URL.Path, "request_id": id, "status_code": statusCode, "latency_ms": time.Since(started).Milliseconds()}
+		spanContext := trace.SpanContextFromContext(r.Context())
+		if spanContext.IsValid() {
+			entry["logging.googleapis.com/trace"] = fmt.Sprintf("projects/%s/traces/%s", s.config.ProjectID, spanContext.TraceID())
+			entry["logging.googleapis.com/spanId"] = spanContext.SpanID().String()
+			entry["logging.googleapis.com/trace_sampled"] = spanContext.IsSampled()
+		}
+		encoded, _ := json.Marshal(entry)
+		requestLogger.Print(string(encoded))
 	})
 }
 func requestID(r *http.Request) string {

@@ -12,7 +12,17 @@ curl -s http://localhost:8080/ | jq
 
 Endpoints: `/`, `/healthz`, `/readyz`, `/metrics`, `/error`, and `/delay?ms=250`.
 
-Configuration: `PORT`, `APP_VERSION`, `CLUSTER_NAME`, `REGION`, `POD_NAME`, and `RESPONSE_MESSAGE`.
+Configuration: `PORT`, `APP_VERSION`, `CLUSTER_NAME`, `REGION`, `POD_NAME`,
+`RESPONSE_MESSAGE`, `OBSERVABILITY_ENABLED`, and `GOOGLE_CLOUD_PROJECT`.
+
+Cloud observability is disabled by default so local development does not need
+Google credentials. When enabled in GKE, the service exports sampled server
+spans through the standard authenticated OTLP endpoint to Cloud Trace, starts
+Cloud Profiler, adds trace correlation fields to structured request logs, and
+formats `/error` events for Error Reporting. A telemetry initialization failure
+is logged but does not prevent the service from serving traffic. Health,
+readiness, and metrics scrapes are excluded from tracing to avoid paying for
+low-value operational spans.
 
 ## Container and Kubernetes
 
@@ -49,6 +59,8 @@ helm upgrade --install response charts/gke-response-service \
   --set serviceAccount.name=response-service-workload \
   --set config.clusterName=gke-primary \
   --set config.region=us-central1 \
+  --set observability.enabled=true \
+  --set observability.projectId=gke-sre-assesment \
   --set secretManager.enabled=true \
   --set secretManager.projectNumber=150538255871
 ```
