@@ -22,7 +22,8 @@ Cloud Profiler, adds trace correlation fields to structured request logs, and
 formats `/error` events for Error Reporting. A telemetry initialization failure
 is logged but does not prevent the service from serving traffic. Health,
 readiness, and metrics scrapes are excluded from tracing to avoid paying for
-low-value operational spans.
+low-value operational spans. Google load-balancer health checks propagated by
+the request service are excluded for the same reason.
 
 ## Container and Kubernetes
 
