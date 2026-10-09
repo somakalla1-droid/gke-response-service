@@ -62,7 +62,11 @@ helm upgrade --install response charts/gke-response-service \
   --set observability.enabled=true \
   --set observability.projectId=gke-sre-assesment \
   --set secretManager.enabled=true \
-  --set secretManager.projectNumber=150538255871
+  --set-string secretManager.projectNumber=150538255871
 ```
+
+Use `--set-string` for Google Cloud project numbers. The chart also normalizes
+the value to an integer so Helm cannot render a long numeric value in
+scientific notation inside the Secret Manager resource name.
 
 The application must treat `/var/run/secrets/gsm/response-demo-token` as sensitive: do not log, print, commit, or inject its contents into a Kubernetes Secret. To verify the mount later, test only for the presence of the file, not its value.
