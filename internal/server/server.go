@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -55,9 +56,7 @@ func New(config Config) http.Handler {
 	return otelhttp.NewHandler(
 		s.logging(mux),
 		config.AppName,
-		otelhttp.WithFilter(func(r *http.Request) bool {
-			return r.URL.Path != "/healthz" && r.URL.Path != "/readyz" && r.URL.Path != "/metrics"
-		}),
+		otelhttp.WithFilter(shouldTraceRequest),
 	)
 }
 func (s *service) response(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +124,13 @@ func (s *service) logging(next http.Handler) http.Handler {
 		encoded, _ := json.Marshal(entry)
 		requestLogger.Print(string(encoded))
 	})
+}
+
+func shouldTraceRequest(r *http.Request) bool {
+	return r.URL.Path != "/healthz" &&
+		r.URL.Path != "/readyz" &&
+		r.URL.Path != "/metrics" &&
+		!strings.HasPrefix(r.UserAgent(), "GoogleHC/")
 }
 func requestID(r *http.Request) string {
 	if id := r.Header.Get("X-Request-ID"); id != "" {

@@ -77,3 +77,11 @@ func TestDelayRejectsRange(t *testing.T) {
 		t.Fatalf("status = %d", res.Code)
 	}
 }
+
+func TestGoogleHealthCheckIsNotTraced(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("User-Agent", "GoogleHC/1.0")
+	if shouldTraceRequest(req) {
+		t.Fatal("Google load-balancer health check should not be traced")
+	}
+}
