@@ -35,6 +35,22 @@ helm lint charts/gke-response-service
 
 The image is distroless and non-root. The application-owned Helm chart configures two replicas, health probes, constrained resources, HPA, and a PodDisruptionBudget. Its container security context explicitly uses the distroless `nonroot` UID/GID (`65532`), allowing Kubernetes to verify the `runAsNonRoot` policy without relying on the image's named user.
 
+For a release, set both the human-readable commit tag and the verified GAR
+digest. The Deployment then uses the immutable `repository@sha256:...`
+reference while `APP_VERSION` continues to report the commit tag:
+
+```bash
+helm upgrade response charts/gke-response-service \
+  --namespace assessment-apps \
+  --reuse-values \
+  --set-string image.tag=COMMIT_SHA \
+  --set-string image.digest=sha256:IMAGE_DIGEST
+```
+
+If `image.digest` is empty, the chart retains tag-based rendering for local
+development. Production and Binary Authorization deployments must supply a
+verified digest.
+
 ### Kubernetes configuration
 
 The chart always creates a ConfigMap containing `APP_VERSION`, `CLUSTER_NAME`, `REGION`, and `RESPONSE_MESSAGE`. Set the deployment values without editing manifests:

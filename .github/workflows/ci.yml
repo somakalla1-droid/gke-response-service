@@ -21,6 +21,16 @@ jobs:
       - run: go vet ./...
       - uses: azure/setup-helm@v4
       - run: helm lint charts/gke-response-service
+      - name: Verify immutable image rendering
+        run: |
+          DIGEST="sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          helm template response charts/gke-response-service \
+            --set-string image.tag=test-version \
+            --set-string image.digest="${DIGEST}" \
+            | grep -F "gke-response-service@${DIGEST}" >/dev/null
+          helm template response charts/gke-response-service \
+            --set-string image.tag=test-version \
+            | grep -F 'gke-response-service:test-version' >/dev/null
       - run: docker build -t gke-response-service:${{ github.sha }} .
 
   publish:
